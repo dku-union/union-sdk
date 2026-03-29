@@ -5,6 +5,8 @@ import { DeviceModule } from './modules/device';
 import { StorageModule } from './modules/storage';
 import { AnalyticsModule } from './modules/analytics';
 import { NetworkModule } from './modules/network';
+import { NavigationModule } from './modules/navigation';
+import { installNavigationInterceptor } from './modules/navigation-interceptor';
 import { SDK_VERSION } from './version';
 import type { UnionEvent, RequestOptions, RequestResult } from './types';
 
@@ -24,6 +26,7 @@ const device = new DeviceModule(bridge);
 const storage = new StorageModule(bridge);
 const analytics = new AnalyticsModule(bridge);
 const network = new NetworkModule(bridge);
+const navigation = new NavigationModule(bridge);
 
 /**
  * Union SDK
@@ -40,8 +43,8 @@ const network = new NetworkModule(bridge);
  * // 토스트 표시
  * Union.ui.showToast({ message: '안녕하세요!' });
  *
- * // HTTP 요청 (mTLS 자동 적용)
- * const result = await Union.request({ url: '/api/data', method: 'GET' });
+ * // 네이티브 페이지 이동 (자동 가로채기 외 명시적 호출)
+ * await Union.navigation.push('/detail/123');
  * ```
  */
 const Union = {
@@ -55,6 +58,8 @@ const Union = {
   storage,
   /** 애널리틱스 모듈 */
   analytics,
+  /** 네비게이션 모듈 (네이티브 페이지 스택) */
+  navigation,
 
   /** HTTP 요청 (mTLS 인증 자동 적용) */
   request(options: RequestOptions): Promise<RequestResult> {
@@ -81,6 +86,9 @@ const Union = {
 // 전역 등록 (WebView 환경에서 window.Union으로 접근 가능)
 if (typeof window !== 'undefined') {
   (window as any).Union = Union;
+
+  // <a> 태그 자동 가로채기 + viewport prefetch 설치
+  installNavigationInterceptor(navigation);
 }
 
 export default Union;

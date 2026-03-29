@@ -95,3 +95,17 @@ export type PermissionScope =
   | 'device.location'
   | 'device.camera'
   | 'device.storage';
+
+// ============================================
+// Navigation Module Types
+// ============================================
+
+export interface NavigationPushOptions {
+  url: string;
+  title?: string;
+  animated?: boolean;
+}
+
+export interface NavigationPushResult {
+  success: boolean;
+}
