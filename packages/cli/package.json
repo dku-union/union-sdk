@@ -1,0 +1,32 @@
+{
+  "name": "@union-miniapp/cli",
+  "version": "1.0.0",
+  "description": "Union Mini-App CLI Tools",
+  "bin": {
+    "union": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@types/archiver": "^7.0.0",
+    "archiver": "^7.0.1",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "union",
+    "mini-app",
+    "cli"
+  ],
+  "license": "MIT"
+}
