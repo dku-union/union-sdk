@@ -1,0 +1,20 @@
+{
+  "appId": "com.union.my-app",
+  "name": "My Union App",
+  "version": "1.0.0",
+  "description": "",
+  "icon": "./assets/icon.png",
+  "category": "utility",
+  "permissions": [
+    "user.profile"
+  ],
+  "contactEmail": "",
+  "keywords": [],
+  "previews": [],
+  "minSdkVersion": "1.0.0",
+  "build": {
+    "entry": "src/main.tsx",
+    "outDir": "dist",
+    "maxBundleSize": "2MB"
+  }
+}
