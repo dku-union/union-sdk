@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.unionapp
+.DS_Store
+.claude/
+
+# Sample mini-apps (separate repos)
+danjjak/
+sample-app/
+taxipot/
