@@ -174,6 +174,29 @@ const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> =
       return { statusCode: resp.status, headers, data };
     },
   },
+
+  navigation: {
+    push: (params) => {
+      console.log('[Union Mock] Navigation push:', params?.url);
+      if (params?.url) {
+        window.history.pushState({}, '', params.url);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+      return { success: true };
+    },
+    back: () => {
+      window.history.back();
+      return undefined;
+    },
+    replace: (params) => {
+      if (params?.url) window.history.replaceState({}, '', params.url);
+      return undefined;
+    },
+    prefetch: (params) => {
+      console.log('[Union Mock] Prefetch:', params?.url);
+      return undefined;
+    },
+  },
 };
 
 // ============================================

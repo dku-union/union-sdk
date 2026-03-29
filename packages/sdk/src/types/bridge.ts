@@ -48,7 +48,8 @@ export type BridgeModule =
   | 'device'
   | 'storage'
   | 'analytics'
-  | 'network';
+  | 'network'
+  | 'navigation';
 
 export type UnionEvent =
   | 'app:pause'
@@ -57,7 +58,9 @@ export type UnionEvent =
   | 'auth:expired'
   | 'auth:revoked'
   | 'network:online'
-  | 'network:offline';
+  | 'network:offline'
+  | 'navigation:didPush'
+  | 'navigation:didPop';
 
 /** Bridge 어댑터 인터페이스 */
 export interface BridgeAdapter {

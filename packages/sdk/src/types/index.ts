@@ -24,4 +24,6 @@ export type {
   RequestResult,
   EventParams,
   PermissionScope,
+  NavigationPushOptions,
+  NavigationPushResult,
 } from './modules';
