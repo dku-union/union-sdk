@@ -43,8 +43,11 @@ const navigation = new NavigationModule(bridge);
  * // 토스트 표시
  * Union.ui.showToast({ message: '안녕하세요!' });
  *
- * // 네이티브 페이지 이동 (자동 가로채기 외 명시적 호출)
- * await Union.navigation.push('/detail/123');
+ * // 커스텀 이벤트 트래킹
+ * Union.analytics.trackEvent('join_club', { clubId: 'soccer_001' });
+ *
+ * // 전환 이벤트
+ * Union.analytics.trackConversion('ticket_purchase', { value: 5000, currency: 'KRW' });
  * ```
  */
 const Union = {
@@ -83,12 +86,21 @@ const Union = {
   },
 } as const;
 
-// 전역 등록 (WebView 환경에서 window.Union으로 접근 가능)
+// ============================================
+// 전역 등록 + 자동 수집 초기화
+// ============================================
+
 if (typeof window !== 'undefined') {
+  // window.Union 으로 WebView 환경에서도 접근 가능
   (window as any).Union = Union;
 
-  // <a> 태그 자동 가로채기 + viewport prefetch 설치
-  installNavigationInterceptor(navigation);
+  // Analytics 자동 수집 활성화 (JS 에러, Web Vitals, Bridge 레이턴시)
+  analytics.install();
+
+  // <a> 태그 자동 가로채기 + viewport prefetch + screen_view 트래킹 연결
+  installNavigationInterceptor(navigation, {
+    onNavigate: (to: string, from: string) => analytics.onNavigate(to, from),
+  });
 }
 
 export default Union;

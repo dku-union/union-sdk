@@ -3,10 +3,31 @@ import type { NavigationModule } from './navigation';
 const TAG = '[Union Nav]';
 
 /**
- * <a> 태그 자동 가로채기 + viewport prefetch
- * SDK 초기화 시 자동으로 설치됨
+ * Navigation Interceptor 설정 옵션
  */
-export function installNavigationInterceptor(navigation: NavigationModule): () => void {
+export interface NavigationInterceptorOptions {
+  /**
+   * 네비게이션 발생 시 호출되는 콜백.
+   * Analytics 연동에 사용 — `analytics.onNavigate(to, from)` 을 여기서 호출.
+   *
+   * @param to   - 이동할 URL (href)
+   * @param from - 현재 URL (window.location.pathname + search)
+   */
+  onNavigate?: (to: string, from: string) => void;
+}
+
+/**
+ * `<a>` 태그 자동 가로채기 + viewport prefetch
+ *
+ * SDK 초기화 시 자동으로 설치됨.
+ * 네비게이션 발생 시 `options.onNavigate` 콜백을 통해 Analytics 로 screen_view 이벤트 전달.
+ *
+ * @returns cleanup 함수 — 인터셉터 제거 시 호출
+ */
+export function installNavigationInterceptor(
+  navigation: NavigationModule,
+  options: NavigationInterceptorOptions = {},
+): () => void {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return () => {};
   }
@@ -15,35 +36,41 @@ export function installNavigationInterceptor(navigation: NavigationModule): () =
 
   const cleanups: (() => void)[] = [];
 
-  // 1. <a> 클릭 가로채기 (capture phase — 프레임워크 핸들러보다 먼저 실행)
+  // ============================================
+  // 1. <a> 클릭 가로채기
+  //    capture phase — 프레임워크 핸들러보다 먼저 실행
+  // ============================================
   const clickHandler = (e: Event) => {
     const anchor = (e.target as Element)?.closest?.('a');
     if (!anchor) return;
 
     const href = anchor.getAttribute('href');
-    console.log(`${TAG} Click detected: <a href="${href}"> data-union-nav="${anchor.getAttribute('data-union-nav')}"`);
 
     // data-union-nav="false" → opt-out
     if (anchor.getAttribute('data-union-nav') === 'false') {
-      console.log(`${TAG} Skipped (opt-out): ${href}`);
       return;
     }
 
     if (!href || isExternalLink(href)) {
-      console.log(`${TAG} Skipped (external/empty): ${href}`);
       return;
     }
 
     e.preventDefault();
     e.stopPropagation();
-    console.log(`${TAG} Intercepted → navigation.push("${href}")`);
+
+    // Analytics: screen_view (네비게이션 직전 현재 경로를 referrer 로 전달)
+    const from = window.location.pathname + window.location.search;
+    options.onNavigate?.(href, from);
+
     navigation.push(href);
   };
 
   document.addEventListener('click', clickHandler, true);
   cleanups.push(() => document.removeEventListener('click', clickHandler, true));
 
+  // ============================================
   // 2. IntersectionObserver — viewport 진입 시 prefetch
+  // ============================================
   if ('IntersectionObserver' in window) {
     const prefetched = new Set<string>();
 
@@ -54,7 +81,6 @@ export function installNavigationInterceptor(navigation: NavigationModule): () =
           const href = (entry.target as HTMLAnchorElement).getAttribute('href');
           if (href && !isExternalLink(href) && !prefetched.has(href)) {
             prefetched.add(href);
-            console.log(`${TAG} Prefetch (viewport): ${href}`);
             navigation.prefetch(href);
             observer.unobserve(entry.target);
           }
@@ -78,14 +104,15 @@ export function installNavigationInterceptor(navigation: NavigationModule): () =
       }
     };
 
-    // 초기 관찰
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', observeAnchors, { once: true });
     } else {
       observeAnchors();
     }
 
+    // ============================================
     // 3. MutationObserver — 동적으로 추가되는 <a> 태그 감지
+    // ============================================
     const mutationObserver = new MutationObserver(() => observeAnchors());
     mutationObserver.observe(document.documentElement, { childList: true, subtree: true });
 

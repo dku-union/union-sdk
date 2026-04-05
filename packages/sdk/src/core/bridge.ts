@@ -11,6 +11,12 @@ import { IOSAdapter, AndroidAdapter } from './adapter';
 import { MockAdapter } from './mock';
 import { SDK_VERSION } from '../version';
 
+/**
+ * Bridge 레이턴시 측정 콜백 타입.
+ * AnalyticsModule 이 install() 시 등록하며, analytics 모듈 자체 호출은 측정에서 제외됨.
+ */
+type PerfCallback = (metricName: string, valueMs: number) => void;
+
 /** 커스텀 에러 클래스 */
 export class UnionError extends Error {
   constructor(
@@ -27,9 +33,10 @@ export class UnionError extends Error {
  * SDK ↔ Native 간 메시지 패싱의 핵심 엔진.
  *
  * - 플랫폼 자동 감지 (iOS / Android / Mock)
- * - Promise 기반 요청-응답 매칭
- * - 타임아웃 처리
- * - 네이티브 이벤트 수신
+ * - Promise 기반 요청-응답 매칭 (UUID v4)
+ * - 30초 기본 타임아웃
+ * - 네이티브 이벤트 수신 (CustomEvent)
+ * - Bridge 호출 레이턴시 측정 (analytics 연동)
  */
 export class BridgeCore {
   private pending = new Map<string, PendingRequest>();
@@ -37,14 +44,26 @@ export class BridgeCore {
   public readonly adapter: BridgeAdapter;
   private defaultTimeout = 30_000; // 30초
 
+  /**
+   * analytics 모듈에서 등록하는 성능 측정 콜백.
+   * analytics 모듈 자신의 요청(module === 'analytics')은 재귀 방지를 위해 측정에서 제외.
+   */
+  private perfCallback: PerfCallback | null = null;
+
   constructor() {
     this.adapter = this.detectAdapter();
     this.listenForResponses();
     this.listenForEvents();
   }
 
+  // ============================================
+  // Public API
+  // ============================================
+
   /**
-   * 네이티브 모듈 메서드 호출
+   * 네이티브 모듈 메서드 호출 (응답 대기).
+   * 성공 응답 시 bridge_latency 를 perfCallback 으로 전달.
+   *
    * @returns Promise<T> 네이티브 응답 데이터
    */
   invoke<T = unknown>(
@@ -54,6 +73,9 @@ export class BridgeCore {
     timeout?: number,
   ): Promise<T> {
     const id = generateUUID();
+    // performance.now() 가 없는 환경(SSR 등) 대비
+    const startTime = typeof performance !== 'undefined' ? performance.now() : 0;
+
     const request: BridgeRequest = {
       id,
       module,
@@ -66,11 +88,26 @@ export class BridgeCore {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new UnionError('TIMEOUT', `${module}.${action} timed out after ${timeout ?? this.defaultTimeout}ms`));
+        reject(
+          new UnionError(
+            'TIMEOUT',
+            `${module}.${action} timed out after ${timeout ?? this.defaultTimeout}ms`,
+          ),
+        );
       }, timeout ?? this.defaultTimeout);
 
+      // resolve 를 래핑하여 레이턴시 측정 삽입.
+      // analytics 모듈 자체 요청은 재귀 측정 제외.
+      const wrappedResolve = (value: unknown) => {
+        if (module !== 'analytics' && startTime > 0 && this.perfCallback) {
+          const latencyMs = Math.round(performance.now() - startTime);
+          this.perfCallback('bridge_latency', latencyMs);
+        }
+        (resolve as (v: unknown) => void)(value);
+      };
+
       this.pending.set(id, {
-        resolve: resolve as (value: unknown) => void,
+        resolve: wrappedResolve,
         reject,
         timer,
       });
@@ -80,7 +117,8 @@ export class BridgeCore {
   }
 
   /**
-   * fire-and-forget 방식 호출 (응답 불필요)
+   * fire-and-forget 방식 호출 (응답 불필요).
+   * analytics.track, navigation.prefetch 등 응답을 기다릴 필요 없는 작업에 사용.
    */
   fire(module: BridgeModule, action: string, params?: Record<string, unknown>): void {
     const request: BridgeRequest = {
@@ -95,7 +133,7 @@ export class BridgeCore {
   }
 
   /**
-   * 네이티브 이벤트 구독
+   * 네이티브 이벤트 구독.
    */
   on(event: UnionEvent, callback: (data?: unknown) => void): void {
     if (!this.eventListeners.has(event)) {
@@ -105,10 +143,20 @@ export class BridgeCore {
   }
 
   /**
-   * 네이티브 이벤트 구독 해제
+   * 네이티브 이벤트 구독 해제.
    */
   off(event: UnionEvent, callback: (data?: unknown) => void): void {
     this.eventListeners.get(event)?.delete(callback);
+  }
+
+  /**
+   * Bridge 레이턴시 측정 콜백 등록.
+   * AnalyticsModule.install() 에서 자동 호출됨.
+   *
+   * @internal
+   */
+  registerPerfCallback(callback: PerfCallback): void {
+    this.perfCallback = callback;
   }
 
   // ============================================

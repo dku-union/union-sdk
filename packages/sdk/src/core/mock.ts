@@ -63,6 +63,19 @@ export class MockAdapter implements BridgeAdapter {
 
 const STORAGE_PREFIX = 'union_mock_';
 
+/** Analytics 이벤트 타입별 레이블 (개발 콘솔 가독성) */
+const ANALYTICS_ICONS: Record<string, string> = {
+  lifecycle: '[lifecycle]',
+  screen: '[screen   ]',
+  performance: '[perf    ]',
+  error: '[error    ]',
+  custom: '[custom   ]',
+  conversion: '[convert ]',
+};
+
+/** Mock 환경에서 setUserProperty 로 설정된 값을 메모리에 보관 */
+const MOCK_USER_PROPERTIES: Record<string, string | number | boolean> = {};
+
 const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> = {
   auth: {
     login: () => ({
@@ -151,12 +164,53 @@ const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> =
   },
 
   analytics: {
+    /**
+     * 통합 트래킹 핸들러 — 모든 이벤트 타입 처리.
+     * 네이티브에서는 이 단일 액션으로 수신 후 eventType 으로 분기함.
+     */
+    track: (params) => {
+      const { eventType, eventName, timestamp, params: eventParams } = params ?? {};
+      const icon = ANALYTICS_ICONS[eventType as string] ?? '📊';
+      const timeStr = timestamp ? new Date(timestamp as number).toISOString().slice(11, 23) : '';
+
+      // 개발 환경에서 시각적으로 명확한 로그 출력
+      console.groupCollapsed(
+        `%c[Union Analytics]%c ${icon} ${eventType}:${eventName}  %c${timeStr}`,
+        'color:#6366f1;font-weight:bold',
+        'color:inherit',
+        'color:#9ca3af;font-size:0.85em',
+      );
+      if (eventParams && Object.keys(eventParams as object).length > 0) {
+        console.log('params:', eventParams);
+      }
+      // 수집된 사용자 속성 컨텍스트 표시
+      if (Object.keys(MOCK_USER_PROPERTIES).length > 0) {
+        console.log('userProps:', { ...MOCK_USER_PROPERTIES });
+      }
+      console.groupEnd();
+
+      return undefined;
+    },
+
+    setUserProperty: (params) => {
+      const { key, value } = params ?? {};
+      MOCK_USER_PROPERTIES[key as string] = value as string | number | boolean;
+      console.log(
+        `%c[Union Analytics]%c [user-prop]  %c${key} = ${JSON.stringify(value)}`,
+        'color:#6366f1;font-weight:bold',
+        'color:inherit',
+        'color:#10b981',
+      );
+      return undefined;
+    },
+
+    // 하위 호환성 — 이전 버전 SDK 와 함께 사용하는 경우를 위한 폴백
     trackEvent: (params) => {
-      console.log('[Union Analytics] Event:', params?.eventName, params?.params);
+      console.log('[Union Analytics] [custom] (legacy) Event:', params?.eventName, params?.params);
       return undefined;
     },
     trackPageView: (params) => {
-      console.log('[Union Analytics] PageView:', params?.pageName);
+      console.log('[Union Analytics] [screen] (legacy) PageView:', params?.pageName);
       return undefined;
     },
   },
