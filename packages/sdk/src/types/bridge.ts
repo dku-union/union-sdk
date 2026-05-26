@@ -49,7 +49,8 @@ export type BridgeModule =
   | 'storage'
   | 'analytics'
   | 'network'
-  | 'navigation';
+  | 'navigation'
+  | 'notification';
 
 export type UnionEvent =
   | 'app:pause'
@@ -60,7 +61,8 @@ export type UnionEvent =
   | 'network:online'
   | 'network:offline'
   | 'navigation:didPush'
-  | 'navigation:didPop';
+  | 'navigation:didPop'
+  | 'notification:received';
 
 /** Bridge 어댑터 인터페이스 */
 export interface BridgeAdapter {
