@@ -39,6 +39,17 @@ export function loadConfig(cwd: string = process.cwd()): UnionConfig {
   return config;
 }
 
+/** Spring/iOS 가 인식하는 권한 스코프 — SDK PermissionScope 와 동기화 필요 */
+const VALID_PERMISSIONS = new Set<string>([
+  'user.profile',
+  'user.email',
+  'user.university',
+  'device.location',
+  'device.camera',
+  'device.storage',
+  'notification',
+]);
+
 function validateConfig(config: UnionConfig): void {
   const required: (keyof UnionConfig)[] = ['appId', 'name', 'version'];
 
@@ -60,6 +71,18 @@ function validateConfig(config: UnionConfig): void {
     throw new Error(
       `union.config.json: "version" must be semver format (e.g., 1.0.0)`,
     );
+  }
+
+  // permissions 스코프 검증 — 알려진 키만 허용
+  if (config.permissions) {
+    for (const perm of config.permissions) {
+      if (!VALID_PERMISSIONS.has(perm)) {
+        throw new Error(
+          `union.config.json: "${perm}" is not a valid permission scope. ` +
+            `Allowed: ${[...VALID_PERMISSIONS].join(', ')}`,
+        );
+      }
+    }
   }
 }
 

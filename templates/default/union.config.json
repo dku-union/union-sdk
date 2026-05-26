@@ -6,7 +6,8 @@
   "icon": "./assets/icon.png",
   "category": "utility",
   "permissions": [
-    "user.profile"
+    "user.profile",
+    "notification"
   ],
   "contactEmail": "",
   "keywords": [],

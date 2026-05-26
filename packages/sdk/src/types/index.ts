@@ -31,4 +31,10 @@ export type {
   PermissionScope,
   NavigationPushOptions,
   NavigationPushResult,
+  NotificationPermissionStatus,
+  NotificationPermissionResult,
+  DeviceTokenResult,
+  LocalNotificationOptions,
+  LocalNotificationResult,
+  NotificationPayload,
 } from './modules';

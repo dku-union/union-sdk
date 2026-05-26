@@ -139,7 +139,70 @@ export type PermissionScope =
   | 'user.university'
   | 'device.location'
   | 'device.camera'
-  | 'device.storage';
+  | 'device.storage'
+  | 'notification';
+
+// ============================================
+// Notification Module Types
+// ============================================
+
+/** iOS/Android 알림 권한 상태 */
+export type NotificationPermissionStatus =
+  | 'undetermined'   // 아직 요청 안 함 (iOS 만)
+  | 'denied'         // 사용자 거부
+  | 'authorized'     // 일반 알림 허용
+  | 'provisional'    // iOS 사일런트 등록 (배너 없이 수신함)
+  | 'ephemeral';     // iOS App Clip
+
+export interface NotificationPermissionResult {
+  /** 사용자가 알림을 받기로 동의했는지 */
+  granted: boolean;
+  /** 권한 상세 상태 */
+  status: NotificationPermissionStatus;
+}
+
+/** Native 가 발급한 디바이스 푸시 토큰 (hex 문자열 / FCM 토큰) */
+export interface DeviceTokenResult {
+  /** APNs hex token (iOS) 또는 FCM token (Android). 등록 전이면 null. */
+  token: string | null;
+}
+
+export interface LocalNotificationOptions {
+  /** 표시 제목 */
+  title: string;
+  /** 본문 */
+  body: string;
+  /** 발송 지연 (초). 기본 5, 최소 1. */
+  delaySeconds?: number;
+  /** 알림 클릭 시 SDK 가 받을 임의 데이터 (string-only) */
+  data?: Record<string, string>;
+  /** 고유 식별자 — 동일 id 로 다시 schedule 하면 덮어쓴다. */
+  notificationId?: string;
+}
+
+export interface LocalNotificationResult {
+  notificationId: string;
+}
+
+/** 원격 푸시 수신 페이로드 — Spring `FcmService.buildFcmData` 와 매칭. */
+export interface NotificationPayload {
+  /** Spring `NotificationCampaign` row id */
+  campaignId?: string;
+  /** UPDATE / RECOMMENDATION / ANNOUNCEMENT / MINIAPP_GENERIC / PUBLISHER_BUILD / REVIEW_RESULT */
+  category?: string;
+  /** MINIAPP / WEB / INTERNAL / NONE */
+  deeplinkType?: string;
+  /** 발송 대상 미니앱 appId (reverse-domain) */
+  appId?: string;
+  /** 미니앱 내부 경로 (deeplinkType=MINIAPP 일 때) */
+  path?: string;
+  /** 외부 웹 URL (deeplinkType=WEB) */
+  webUrl?: string;
+  /** Union 내부 라우트 (deeplinkType=INTERNAL) */
+  internalRoute?: string;
+  /** APNs 표준 페이로드의 'aps' 필드도 포함될 수 있음 */
+  [key: string]: unknown;
+}
 
 // ============================================
 // Navigation Module Types

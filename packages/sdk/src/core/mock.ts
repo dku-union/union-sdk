@@ -251,6 +251,63 @@ const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> =
       return undefined;
     },
   },
+
+  notification: {
+    requestPermission: () => {
+      // 브라우저 Notification API 가 있으면 실제 권한 요청. 없으면 mock granted.
+      if (typeof Notification !== 'undefined' && Notification.requestPermission) {
+        return Notification.requestPermission().then((perm) => ({
+          granted: perm === 'granted',
+          status: perm === 'granted' ? 'authorized'
+            : perm === 'denied' ? 'denied' : 'undetermined',
+        }));
+      }
+      return { granted: true, status: 'authorized' };
+    },
+    getPermissionStatus: () => {
+      if (typeof Notification === 'undefined') return { status: 'undetermined' };
+      const perm = Notification.permission;
+      return {
+        status: perm === 'granted' ? 'authorized'
+          : perm === 'denied' ? 'denied' : 'undetermined',
+      };
+    },
+    getDeviceToken: () => ({ token: 'mock-device-token-' + Math.random().toString(36).slice(2, 10) }),
+    scheduleLocal: (params) => {
+      const id = (params?.notificationId as string) ?? 'mock_' + Date.now();
+      const title = (params?.title as string) ?? '';
+      const body = (params?.body as string) ?? '';
+      const delay = (params?.delaySeconds as number) ?? 5;
+      console.log(`[Union Mock] scheduleLocal "${title}" (in ${delay}s) → id=${id}`);
+      // 브라우저 환경에서 진짜 알림 띄우기 시뮬레이션
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        setTimeout(() => {
+          try { new Notification(title, { body }); } catch { /* noop */ }
+        }, Math.max(1, delay) * 1000);
+      }
+      return { notificationId: id };
+    },
+    cancelLocal: (params) => {
+      console.log('[Union Mock] cancelLocal:', params?.notificationId);
+      return undefined;
+    },
+    cancelAllLocal: () => {
+      console.log('[Union Mock] cancelAllLocal');
+      return undefined;
+    },
+    subscribe: () => {
+      console.log('[Union Mock] subscribe (현재 미니앱)');
+      return undefined;
+    },
+    unsubscribe: () => {
+      console.log('[Union Mock] unsubscribe (현재 미니앱)');
+      return undefined;
+    },
+    setPushEnabled: (params) => {
+      console.log('[Union Mock] setPushEnabled:', params?.enabled);
+      return undefined;
+    },
+  },
 };
 
 // ============================================

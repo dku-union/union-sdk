@@ -6,6 +6,7 @@ import { StorageModule } from './modules/storage';
 import { AnalyticsModule } from './modules/analytics';
 import { NetworkModule } from './modules/network';
 import { NavigationModule } from './modules/navigation';
+import { NotificationModule } from './modules/notification';
 import { installNavigationInterceptor } from './modules/navigation-interceptor';
 import { SDK_VERSION } from './version';
 import type { UnionEvent, RequestOptions, RequestResult } from './types';
@@ -27,6 +28,7 @@ const storage = new StorageModule(bridge);
 const analytics = new AnalyticsModule(bridge);
 const network = new NetworkModule(bridge);
 const navigation = new NavigationModule(bridge);
+const notification = new NotificationModule(bridge);
 
 /**
  * Union SDK
@@ -63,6 +65,8 @@ const Union = {
   analytics,
   /** 네비게이션 모듈 (네이티브 페이지 스택) */
   navigation,
+  /** 알림 모듈 (권한/로컬알림/구독/원격 푸시 수신) */
+  notification,
 
   /** HTTP 요청 (mTLS 인증 자동 적용) */
   request(options: RequestOptions): Promise<RequestResult> {
