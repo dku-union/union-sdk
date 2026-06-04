@@ -13,7 +13,7 @@ import type { UnionEvent, RequestOptions, RequestResult } from './types';
 
 // Re-export types
 export type * from './types';
-export { UnionError } from './core/bridge';
+export { UnionError, UnionErrorCode } from './core/bridge';
 
 // ============================================
 // Union SDK 초기화

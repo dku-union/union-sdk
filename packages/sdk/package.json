@@ -1,6 +1,6 @@
 {
   "name": "@union-miniapp/sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Union Mini-App Bridge SDK",
   "main": "dist/union-sdk.umd.js",
