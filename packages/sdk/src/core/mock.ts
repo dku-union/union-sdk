@@ -1,4 +1,4 @@
-import type { BridgeAdapter, BridgeRequest, BridgeResponse } from '../types';
+import type { BridgeAdapter, BridgeRequest, BridgeResponse, PermissionScope } from '../types';
 
 /**
  * Mock 어댑터 — 브라우저 개발 환경용
@@ -27,6 +27,20 @@ export class MockAdapter implements BridgeAdapter {
         error: {
           code: 'NOT_SUPPORTED',
           message: `Mock: ${request.module}.${request.action} is not implemented`,
+        },
+      };
+    }
+
+    // 권한 게이트 — 네이티브 BridgeHandler 의 동의 집행과 동일한 규칙을 mock 에서도 재현.
+    const requiredScope = MOCK_SCOPE_MAP[request.module]?.[request.action];
+    if (requiredScope && !mockGrantedScopes().has(requiredScope)) {
+      this.log(request, false);
+      return {
+        id: request.id,
+        success: false,
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: `Mock: '${requiredScope}' 권한이 거부되었습니다`,
         },
       };
     }
@@ -63,6 +77,48 @@ export class MockAdapter implements BridgeAdapter {
 
 const STORAGE_PREFIX = 'union_mock_';
 
+// ============================================
+// 권한 시뮬레이션 (정본 스코프 계약 — 네이티브/백엔드와 동일)
+// ============================================
+
+/** (module, action) → 필요한 권한 스코프. 매핑이 없으면 게이트 없음. */
+const MOCK_SCOPE_MAP: Record<string, Record<string, PermissionScope>> = {
+  auth: { getUserProfile: 'user.profile' },
+  device: { getLocation: 'device.location', scanQRCode: 'device.camera' },
+  storage: { get: 'device.storage', set: 'device.storage', remove: 'device.storage', clear: 'device.storage' },
+  notification: {
+    requestPermission: 'notification',
+    scheduleLocal: 'notification',
+    subscribe: 'notification',
+    unsubscribe: 'notification',
+    setPushEnabled: 'notification',
+  },
+};
+
+const ALL_SCOPES = [
+  'user.profile', 'user.email', 'user.university',
+  'device.location', 'device.camera', 'device.storage', 'notification',
+] as const;
+
+/**
+ * Mock 환경에서 허용된 권한 스코프 집합.
+ *
+ * 기본값은 전체 허용이라 기존 dev 플로우에는 영향이 없다. 권한 거부 UX 를 테스트하려면
+ * 콘솔/부트스트랩에서 허용할 스코프만 지정한다:
+ *
+ * ```js
+ * window.__UNION_MOCK_GRANTED__ = ['user.profile'];
+ * // 이후 device.getLocation() 등은 PERMISSION_DENIED 로 거부됨
+ * ```
+ */
+function mockGrantedScopes(): Set<string> {
+  const override = typeof window !== 'undefined'
+    ? (window as any).__UNION_MOCK_GRANTED__
+    : undefined;
+  if (Array.isArray(override)) return new Set(override.map(String));
+  return new Set(ALL_SCOPES);
+}
+
 /** Analytics 이벤트 타입별 레이블 (개발 콘솔 가독성) */
 const ANALYTICS_ICONS: Record<string, string> = {
   lifecycle: '[lifecycle]',
@@ -81,13 +137,18 @@ const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> =
     login: () => ({
       code: 'mock_auth_code_' + Math.random().toString(36).substring(2, 10),
     }),
-    getUserProfile: () => ({
-      userId: 'mock-user-001',
-      nickname: 'Mock유저',
-      profileImage: undefined,
-      university: '단국대학교',
-      email: 'mock@dankook.ac.kr',
-    }),
+    getUserProfile: () => {
+      // user.profile 게이트는 handleMessage 에서 처리. 여기서는 email/university 를 필드 단위로 게이팅.
+      const granted = mockGrantedScopes();
+      const profile: Record<string, unknown> = {
+        userId: 'mock-user-001',
+        nickname: 'Mock유저',
+        profileImage: undefined,
+      };
+      if (granted.has('user.university')) profile.university = '단국대학교';
+      if (granted.has('user.email')) profile.email = 'mock@dankook.ac.kr';
+      return profile;
+    },
     getAccessToken: () => 'mock_access_token_' + Date.now(),
     logout: () => undefined,
   },

@@ -29,6 +29,38 @@ export class UnionError extends Error {
 }
 
 /**
+ * 표준 UnionError 코드.
+ *
+ * `UnionError.code` 는 임의의 문자열일 수 있지만, 미니앱이 자주 분기하는 코드를
+ * 타입 안전하게 다루도록 상수로 노출한다.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await Union.device.getLocation();
+ * } catch (e) {
+ *   if (e instanceof UnionError && e.code === UnionErrorCode.PERMISSION_DENIED) {
+ *     // 사용자가 권한을 거부함 → fallback UX
+ *   }
+ * }
+ * ```
+ */
+export const UnionErrorCode = {
+  /** 사용자가 권한을 거부했거나, 미니앱이 선언하지 않은 권한을 호출함. */
+  PERMISSION_DENIED: 'PERMISSION_DENIED',
+  /** 요청이 타임아웃됨. */
+  TIMEOUT: 'TIMEOUT',
+  /** 사용자가 작업을 취소함(모달 등). */
+  CANCELLED: 'CANCELLED',
+  /** 네트워크 오류. */
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  /** 분류되지 않은 오류. */
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type UnionErrorCode = (typeof UnionErrorCode)[keyof typeof UnionErrorCode];
+
+/**
  * Bridge Core
  * SDK ↔ Native 간 메시지 패싱의 핵심 엔진.
  *
