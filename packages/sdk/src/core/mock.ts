@@ -132,6 +132,33 @@ const ANALYTICS_ICONS: Record<string, string> = {
 /** Mock 환경에서 setUserProperty 로 설정된 값을 메모리에 보관 */
 const MOCK_USER_PROPERTIES: Record<string, string | number | boolean> = {};
 
+/** base64url 인코딩 (유니코드 안전) */
+function base64url(obj: object): string {
+  const json = JSON.stringify(obj);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * 구조적으로 유효한 mock ID 토큰(JWT 형태)을 생성한다.
+ * 서명 세그먼트는 'mock' 고정 — publisher 백엔드는 비프로덕션에서 JWKS 검증 없이
+ * payload 만 디코드해 신원을 신뢰한다(개발용). prod 에서는 실제 RS256 토큰을 검증한다.
+ */
+function mockIdToken(): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT', kid: 'mock' };
+  const payload = {
+    iss: 'https://union-mock.local',
+    aud: 'mock-miniapp',
+    sub: 'mock-user-001',
+    token_use: 'id',
+    nickname: 'Mock유저',
+    iat: now,
+    exp: now + 3600,
+  };
+  return `${base64url(header)}.${base64url(payload)}.mock`;
+}
+
 const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> = {
   auth: {
     login: () => ({
@@ -149,7 +176,9 @@ const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> =
       if (granted.has('user.email')) profile.email = 'mock@dankook.ac.kr';
       return profile;
     },
-    getAccessToken: () => 'mock_access_token_' + Date.now(),
+    getIdToken: () => mockIdToken(),
+    // 하위호환: 이제 세션 토큰이 아니라 ID 토큰을 반환한다 (네이티브 alias 와 동일).
+    getAccessToken: () => mockIdToken(),
     logout: () => undefined,
   },
 
