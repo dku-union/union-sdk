@@ -9,15 +9,15 @@ export class MockAdapter implements BridgeAdapter {
 
   send(message: BridgeRequest): void {
     // 비동기로 시뮬레이션 (네이티브 지연 모방)
-    setTimeout(() => {
-      const response = this.handleMessage(message);
+    setTimeout(async () => {
+      const response = await this.handleMessage(message);
       window.dispatchEvent(
         new CustomEvent('union-bridge-response', { detail: response }),
       );
     }, 50);
   }
 
-  private handleMessage(request: BridgeRequest): BridgeResponse {
+  private async handleMessage(request: BridgeRequest): Promise<BridgeResponse> {
     const handler = MOCK_HANDLERS[request.module]?.[request.action];
 
     if (!handler) {
@@ -46,7 +46,7 @@ export class MockAdapter implements BridgeAdapter {
     }
 
     try {
-      const data = handler(request.params);
+      const data = await handler(request.params);
       this.log(request, true);
       return { id: request.id, success: true, data };
     } catch (err) {
@@ -159,7 +159,7 @@ function mockIdToken(): string {
   return `${base64url(header)}.${base64url(payload)}.mock`;
 }
 
-const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown>> = {
+const MOCK_HANDLERS: Record<string, Record<string, (params?: any) => unknown | Promise<unknown>>> = {
   auth: {
     login: () => ({
       code: 'mock_auth_code_' + Math.random().toString(36).substring(2, 10),

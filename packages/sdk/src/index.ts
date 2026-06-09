@@ -94,9 +94,33 @@ const Union = {
 // 전역 등록 + 자동 수집 초기화
 // ============================================
 
+/**
+ * 푸시 딥링크 초기 경로(`?__route=`) 적용.
+ *
+ * 네이티브(iOS `MiniAppSchemeHandler`/원격 launch URL)는 미니앱을 특정 화면으로 열 때
+ * 진입 URL 에 `?__route=<path>` 를 붙인다. 미니앱 라우터(History API 기반)가 인식하도록,
+ * React 앱 마운트 전에 실제 경로로 `replaceState` 한다.
+ *
+ * `__route` 가 없으면 아무 일도 하지 않으므로 일반 진입에는 영향이 없다.
+ */
+function applyInitialRoute(): void {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const route = params.get('__route');
+    if (!route) return;
+    // __route 쿼리를 제거하고 실제 경로로 치환 → BrowserRouter 가 초기 경로로 인식.
+    window.history.replaceState(window.history.state, '', route);
+  } catch {
+    // location 접근 불가/cross-origin 경로 등은 무시 (미니앱은 루트에서 시작).
+  }
+}
+
 if (typeof window !== 'undefined') {
   // window.Union 으로 WebView 환경에서도 접근 가능
   (window as any).Union = Union;
+
+  // 푸시 딥링크 초기 경로 적용 — 라우터 마운트/네비게이션 인터셉터보다 먼저.
+  applyInitialRoute();
 
   // Analytics 자동 수집 활성화 (JS 에러, Web Vitals, Bridge 레이턴시)
   analytics.install();
